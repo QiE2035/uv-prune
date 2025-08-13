@@ -1,0 +1,23 @@
+[package]
+name = "uv-prune"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rayon = "1.10.0"
+walkdir = "2.5.0"
+windows = { version = "0.61.3", features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+], optional = true }
+
+[features]
+default = ["windows", "time"]
+time = []
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "abort"
+strip = true
