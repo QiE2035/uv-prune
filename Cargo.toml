@@ -1,18 +1,26 @@
 [package]
 name = "uv-prune"
 version = "0.1.0"
+description = "Clean uv cache by removing non-hardlinked archive entries"
 edition = "2024"
+license = "MIT"
+repository = "https://github.com/user/uv-prune"
+keywords = ["uv", "cache", "cleaner", "hardlink"]
 
 [dependencies]
 rayon = "1.12.0"
+clap = { version = "4.6", features = ["derive", "env"] }
+log = "0.4"
+env_logger = "0.11"
+anyhow = "1.0"
+thiserror = "2"
+home = "0.5"
+
+[target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = [
     "Win32_Foundation",
     "Win32_Storage_FileSystem",
-], optional = true }
-
-[features]
-default = ["windows", "time"]
-time = []
+] }
 
 [profile.release]
 codegen-units = 1
