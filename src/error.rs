@@ -22,15 +22,6 @@ pub enum PruneError {
         source: io::Error,
     },
 
-    /// Failed to remove a directory.
-    #[allow(dead_code)]
-    #[error("Failed to remove `{path}`: {source}")]
-    RemoveFailed {
-        path: PathBuf,
-        #[source]
-        source: io::Error,
-    },
-
     /// Hard link check failed.
     #[error("Failed to check hard link status for `{path}`: {source}")]
     HardLinkCheckFailed {

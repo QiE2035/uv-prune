@@ -2,6 +2,9 @@ use std::path::PathBuf;
 
 use crate::cli::Cli;
 
+/// The uv cache bucket version this tool targets.
+const ARCHIVE_VERSION: &str = "archive-v0";
+
 /// Aggregated configuration from CLI args and environment defaults.
 #[derive(Debug)]
 pub struct Config {
@@ -23,12 +26,10 @@ pub struct Config {
 
 impl From<Cli> for Config {
     fn from(cli: Cli) -> Self {
-        let cache_dir = cli
-            .cache_dir
-            .or_else(detect_cache_dir_from_env)
-            .unwrap_or_else(default_cache_dir);
+        // `--cache-dir` and `UV_CACHE_DIR` are handled by clap.
+        let cache_dir = cli.cache_dir.unwrap_or_else(default_cache_dir);
 
-        let archive_dir = cache_dir.join("archive-v0");
+        let archive_dir = cache_dir.join(ARCHIVE_VERSION);
 
         Config {
             timing: !cli.no_timing,
@@ -42,18 +43,17 @@ impl From<Cli> for Config {
     }
 }
 
-/// Detect cache directory from environment variable.
-fn detect_cache_dir_from_env() -> Option<PathBuf> {
-    std::env::var("UV_CACHE_DIR").ok().map(PathBuf::from)
-}
-
 /// Fallback default cache directory based on platform.
 fn default_cache_dir() -> PathBuf {
     #[cfg(target_os = "windows")]
     {
-        let local_app_data =
-            std::env::var("LOCALAPPDATA").expect("LOCALAPPDATA must be set on Windows");
-        PathBuf::from(local_app_data).join(r"uv\cache")
+        std::env::var("LOCALAPPDATA")
+            .map(|dir| PathBuf::from(dir).join(r"uv\cache"))
+            .unwrap_or_else(|_| {
+                home::home_dir()
+                    .map(|home| home.join(r"AppData\Local\uv\cache"))
+                    .unwrap_or_else(|| std::env::temp_dir().join("uv-cache"))
+            })
     }
 
     #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -63,7 +63,9 @@ fn default_cache_dir() -> PathBuf {
         } else if let Some(home) = home::home_dir() {
             home.join(".cache").join("uv")
         } else {
-            PathBuf::from("~/.cache/uv")
+            // No home directory — fall back to a stable temp location instead
+            // of a literal `~` path, which would never expand.
+            std::env::temp_dir().join("uv-cache")
         }
     }
 

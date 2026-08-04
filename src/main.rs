@@ -53,7 +53,7 @@ fn main() -> anyhow::Result<()> {
 
     // Non-zero exit if there were errors
     if result.errors > 0 {
-        eprintln!("Completed with {} error(s)", result.errors);
+        log::error!("Completed with {} error(s)", result.errors);
         std::process::exit(1);
     }
 
