@@ -23,7 +23,7 @@ pub struct Cli {
     pub include_no_dist_info: bool,
 
     /// Number of parallel workers (0 = auto)
-    #[arg(short, long)]
+    #[arg(short, long, default_value = "0")]
     pub jobs: usize,
 
     /// Disable timing measurement
