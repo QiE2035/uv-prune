@@ -35,7 +35,7 @@ impl<P: AsRef<Path>> IsHardLink for P {
 
         result
             .map(|_| file_info.nNumberOfLinks > 1)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+            .map_err(io::Error::other)
     }
 }
 
