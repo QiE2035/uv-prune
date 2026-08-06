@@ -10,6 +10,12 @@
 - Shared `setup-rust` composite action (`.github/actions/setup-rust`) — the checkout + toolchain + cache steps are defined once and reused by both workflows; the PyPI job also gained the `contents: read` permission its `checkout` step needs.
 - Git branches reorganized: default branch renamed `master` → `main`, development branches archived under `archive/` (`archive/modernize`, `archive/prune_by_metadata_file`).
 
+### Changed
+
+- `scripts/make_wheel.py` now ships the binary inside a thin Python launcher package (`uv_prune`) wired up via a `console_scripts` entry point. `uv tool install` / `pipx` / `pip` therefore only place a small launcher in the bin directory instead of copying the whole binary there, keeping a single copy of the executable inside the environment.
+
+- `build.rs` embeds a full version string at compile time, so `--version` distinguishes build provenance: CI builds get `+ci.<run-number>.<commit-sha-prefix>` (e.g. `uv-prune 0.1.0+ci.42.a1b2c3d4`), local development builds get `+dev.<short-sha>`, and tagged releases stay clean (`uv-prune 0.1.0`) — the publish workflow sets `UV_PRUNE_RELEASE_BUILD` so git state on CI can never leak a dev marker into release artifacts.
+
 ## [0.1.0] — 2026-07-30
 
 ### Added

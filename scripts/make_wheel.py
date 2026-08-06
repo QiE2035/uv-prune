@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Build a PEP 427 wheel that ships the compiled `uv-prune` binary.
 
-The wheel contains no Python code — the executable lives in the wheel's
-`{dist}-{version}.data/scripts/` directory, so `pip`, `pipx` and
-`uv tool install` all install a `uv-prune` entry point that launches the
-binary. Windows wheels ship the executable as `uv-prune.exe` (a bare PE
-file without the `.exe` extension cannot be launched by the OS), Unix
-wheels ship it as `uv-prune`. Only the Python standard library is used.
+The wheel contains a thin Python launcher package (`uv_prune`) plus the
+compiled binary under `uv_prune/_bin/`, wired up via a `console_scripts`
+entry point. Installers (`pip`, `pipx`, `uv tool install`) therefore only
+create a small launcher in the bin directory and keep a single copy of the
+binary inside the environment — a bare binary under `.data/scripts/` would
+otherwise be copied wholesale into the bin directory.
+
+Windows wheels ship the executable as `uv-prune.exe` (a bare PE file
+without the `.exe` extension cannot be launched by the OS), Unix wheels
+ship it as `uv-prune`. Only the Python standard library is used.
 
 Usage:
     python scripts/make_wheel.py --binary <path-to-binary> \\
@@ -35,6 +39,34 @@ import zipfile
 # re-mark the script executable on install.
 UNIX_EXECUTABLE_ATTR = (0o100755 << 16)
 
+# The launcher module shipped inside the wheel. `main()` finds the compiled
+# binary next to it and execs it, so the launcher itself is tiny.
+INIT_PY = '''\
+"""uv-prune — thin launcher that starts the compiled Rust binary.
+
+The real program is the binary in `_bin/`; this module just locates and
+execs it. Installers (uv, pip, pipx) turn the `console_scripts` entry point
+into a small launcher in the bin directory instead of copying the whole
+binary there.
+"""
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+_BINARY_NAME = "uv-prune.exe" if os.name == "nt" else "uv-prune"
+
+
+def main() -> int:
+    binary = Path(__file__).resolve().parent / "_bin" / _BINARY_NAME
+    return subprocess.call([str(binary), *sys.argv[1:]])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+'''
+
 
 def sha256_urlsafe(data: bytes) -> str:
     digest = hashlib.sha256(data).digest()
@@ -58,14 +90,15 @@ def build_wheel(
     wheel_path = os.path.join(out_dir, wheel_name)
 
     dist_info = f"{name_safe}-{version}.dist-info"
-    data_dir = f"{name_safe}-{version}.data"
-    # The file inside `.data/scripts/` becomes the installed command name:
-    # keep the hyphen so `uv tool install` / `pipx` / `pip` provide
-    # `uv-prune` (and `uv-prune.exe` on Windows), not `uv_prune`.
+    # The binary lives inside the package (`uv_prune/_bin/`), so it lands in
+    # site-packages and is found via `__file__`. The console_scripts entry
+    # point below is what installers expose as the `uv-prune` command.
     # On Windows the script must carry the `.exe` extension — a PE file
     # named `uv-prune` without it cannot be executed by the OS.
-    script_name = f"{name}.exe" if platform_tag.startswith("win") else name
-    script_rel = f"{data_dir}/scripts/{script_name}"
+    binary_name = f"{name}.exe" if platform_tag.startswith("win") else name
+    binary_rel = f"{name_safe}/_bin/{binary_name}"
+    init_rel = f"{name_safe}/__init__.py"
+    entry_points_rel = f"{dist_info}/entry_points.txt"
 
     metadata = "\n".join(
         [
@@ -85,11 +118,13 @@ def build_wheel(
         [
             "Wheel-Version: 1.0",
             f"Generator: uv-prune release ({version})",
-            "Root-Is-Purelib: false",
+            "Root-Is-Purelib: true",
             f"Tag: py3-none-{platform_tag}",
             "",
         ]
     ).encode("utf-8")
+
+    entry_points = f"[console_scripts]\n{name} = {name_safe}:main\n"
 
     with open(binary, "rb") as fh:
         binary_bytes = fh.read()
@@ -97,7 +132,9 @@ def build_wheel(
     entries = [
         (f"{dist_info}/METADATA", metadata, None),
         (f"{dist_info}/WHEEL", wheel_meta, None),
-        (script_rel, binary_bytes, UNIX_EXECUTABLE_ATTR),
+        (f"{dist_info}/entry_points.txt", entry_points.encode("utf-8"), None),
+        (init_rel, INIT_PY.encode("utf-8"), None),
+        (binary_rel, binary_bytes, UNIX_EXECUTABLE_ATTR),
     ]
 
     with zipfile.ZipFile(wheel_path, "w", zipfile.ZIP_DEFLATED) as zf:

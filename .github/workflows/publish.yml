@@ -106,6 +106,12 @@ jobs:
 
       - name: Build release binary
         shell: bash
+        # Release artifacts must never carry a dev marker: git state in CI
+        # (shallow clones, detached heads) can make `git describe` fail, so
+        # explicitly request a release-clean version instead of relying on
+        # the tag detection in build.rs.
+        env:
+          UV_PRUNE_RELEASE_BUILD: "1"
         run: cargo build --release --target "${{ matrix.target }}"
 
       - name: Smoke test binary

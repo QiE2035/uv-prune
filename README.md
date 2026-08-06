@@ -23,7 +23,7 @@ All entries are processed in parallel (via Rayon) and reported as a table sorted
 
 ### From PyPI (pre-built binary)
 
-Every tagged release publishes platform wheels to PyPI (no Python code — the compiled binary ships inside the wheel), so install with any Python package manager:
+Every tagged release publishes platform wheels to PyPI (the compiled binary ships inside a thin Python launcher package, so the bin directory gets a small launcher instead of a full copy of the executable), so install with any Python package manager:
 
 ```bash
 uv tool install uv-prune   # recommended — managed by uv
@@ -63,6 +63,8 @@ git push origin v0.1.1
 ```
 
 The workflow can also be run manually via `workflow_dispatch` to smoke-test the build matrix without publishing.
+
+`--version` reports build provenance: local development builds get `+dev.<short-sha>` (e.g. `uv-prune 0.1.0+dev.a1b2c3d4`), CI builds of `main` get `+ci.<run-number>.<commit-sha-prefix>` (e.g. `uv-prune 0.1.0+ci.42.a1b2c3d4`), and tagged releases stay clean (`uv-prune 0.1.0`).
 
 ## Usage
 

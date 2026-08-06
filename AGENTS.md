@@ -22,6 +22,7 @@ Modules, each with tests colocated in-module:
 
 | Module | Responsibility |
 | --- | --- |
+| `build.rs` | Injects `UV_PRUNE_FULL_VERSION` at compile time: plain version when `UV_PRUNE_RELEASE_BUILD` is set (publish workflow), `+<meta>` when `UV_PRUNE_BUILD_META` is non-empty (CI builds), otherwise git-derived — `+dev.<short-sha>` for local dev builds, plain version when HEAD is a tag |
 | `main.rs` | Entry point: logging init, rayon global thread pool, timing, exit code |
 | `cli.rs` | clap derive `Cli` struct — single source of CLI flags |
 | `config.rs` | `Config` aggregated from `Cli` + platform default cache path |

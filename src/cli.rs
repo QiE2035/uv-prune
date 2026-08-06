@@ -4,7 +4,7 @@ use clap::Parser;
 
 /// Clean uv cache by removing non-hardlinked archive entries.
 #[derive(Parser, Debug)]
-#[command(name = "uv-prune", version, author)]
+#[command(name = "uv-prune", version = env!("UV_PRUNE_FULL_VERSION"), author)]
 pub struct Cli {
     /// UV cache directory (overrides UV_CACHE_DIR env var)
     #[arg(short, long, env = "UV_CACHE_DIR")]

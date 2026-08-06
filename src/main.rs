@@ -23,7 +23,7 @@ fn main() -> anyhow::Result<()> {
 
     log::info!(
         "uv-prune v{} — cache: {}",
-        env!("CARGO_PKG_VERSION"),
+        env!("UV_PRUNE_FULL_VERSION"),
         config.cache_dir.display()
     );
     log::debug!("Config: {config:#?}");

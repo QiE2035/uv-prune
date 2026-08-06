@@ -46,7 +46,23 @@ jobs:
         run: cargo test
 
       - name: Build release binary
-        run: cargo build --release
+        shell: bash
+        # Embed CI build metadata (semver build metadata) into the version,
+        # so `--version` distinguishes CI artifacts from tagged releases:
+        # e.g. `uv-prune 0.1.0+ci.42.a1b2c3d4` vs `uv-prune 0.1.0`.
+        run: |
+          UV_PRUNE_BUILD_META="ci.${{ github.run_number }}.${GITHUB_SHA:0:8}" \
+            cargo build --release
+
+      - name: Verify CI version marker
+        shell: bash
+        run: |
+          VERSION_OUTPUT="$(target/release/uv-prune --version)"
+          echo "Built: $VERSION_OUTPUT"
+          case "$VERSION_OUTPUT" in
+            *+ci.*) ;;
+            *) echo "::error::CI build version missing +ci. marker, got: $VERSION_OUTPUT"; exit 1 ;;
+          esac
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4

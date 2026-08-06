@@ -40,28 +40,37 @@ class BuildWheelTest(unittest.TestCase):
         with zipfile.ZipFile(wheel) as zf:
             return zf.read(entry)
 
-    def test_wheel_name_and_script_names(self) -> None:
+    def test_wheel_name_and_binary_paths(self) -> None:
         cases = {
-            "win_amd64": "uv_prune-0.1.0.data/scripts/uv-prune.exe",
-            "win_arm64": "uv_prune-0.1.0.data/scripts/uv-prune.exe",
-            "musllinux_1_2_x86_64": "uv_prune-0.1.0.data/scripts/uv-prune",
-            "musllinux_1_2_aarch64": "uv_prune-0.1.0.data/scripts/uv-prune",
-            "macosx_11_0_arm64": "uv_prune-0.1.0.data/scripts/uv-prune",
-            "macosx_10_12_x86_64": "uv_prune-0.1.0.data/scripts/uv-prune",
+            "win_amd64": "uv_prune/_bin/uv-prune.exe",
+            "win_arm64": "uv_prune/_bin/uv-prune.exe",
+            "musllinux_1_2_x86_64": "uv_prune/_bin/uv-prune",
+            "musllinux_1_2_aarch64": "uv_prune/_bin/uv-prune",
+            "macosx_11_0_arm64": "uv_prune/_bin/uv-prune",
+            "macosx_10_12_x86_64": "uv_prune/_bin/uv-prune",
         }
-        for tag, script_path in cases.items():
+        for tag, binary_path in cases.items():
             with self.subTest(tag=tag):
                 wheel = self._build(tag)
                 self.assertEqual(Path(wheel).name, f"uv_prune-{VERSION}-py3-none-{tag}.whl")
                 with zipfile.ZipFile(wheel) as zf:
-                    self.assertIn(script_path, zf.namelist())
-                    self.assertEqual(zf.read(script_path), self.payload)
-                    self.assertEqual(zf.namelist().count(script_path), 1)
+                    self.assertIn(binary_path, zf.namelist())
+                    self.assertEqual(zf.read(binary_path), self.payload)
+                    self.assertEqual(zf.namelist().count(binary_path), 1)
 
-    def test_unix_script_has_executable_bit(self) -> None:
+    def test_entry_points_and_launcher_module(self) -> None:
+        wheel = self._build("win_amd64")
+        entry_points = self._read(wheel, "uv_prune-0.1.0.dist-info/entry_points.txt").decode()
+        self.assertEqual(entry_points, "[console_scripts]\nuv-prune = uv_prune:main\n")
+        init_py = self._read(wheel, "uv_prune/__init__.py").decode()
+        self.assertIn("def main()", init_py)
+        self.assertIn("subprocess.call", init_py)
+        self.assertIn('"_bin"', init_py)
+
+    def test_unix_binary_has_executable_bit(self) -> None:
         wheel = self._build("musllinux_1_2_x86_64")
         with zipfile.ZipFile(wheel) as zf:
-            info = zf.getinfo("uv_prune-0.1.0.data/scripts/uv-prune")
+            info = zf.getinfo("uv_prune/_bin/uv-prune")
         self.assertEqual(info.external_attr >> 16, 0o100755)
 
     def test_record_matches_contents(self) -> None:
@@ -73,7 +82,8 @@ class BuildWheelTest(unittest.TestCase):
         for line in record.strip().splitlines():
             path, digest, size = line.split(",")
             rows[path] = (digest, size)
-        self.assertEqual(len(rows), 4)  # METADATA, WHEEL, script, RECORD itself
+        # METADATA, WHEEL, entry_points.txt, __init__.py, binary, RECORD itself
+        self.assertEqual(len(rows), 6)
         self.assertEqual(set(rows), set(names))
         with zipfile.ZipFile(wheel) as zf:
             for name in names:
@@ -88,7 +98,7 @@ class BuildWheelTest(unittest.TestCase):
         wheel = self._build("macosx_11_0_arm64")
         wheel_meta = self._read(wheel, "uv_prune-0.1.0.dist-info/WHEEL").decode()
         self.assertIn("Tag: py3-none-macosx_11_0_arm64", wheel_meta)
-        self.assertIn("Root-Is-Purelib: false", wheel_meta)
+        self.assertIn("Root-Is-Purelib: true", wheel_meta)
         metadata = self._read(wheel, "uv_prune-0.1.0.dist-info/METADATA").decode()
         self.assertIn("Name: uv-prune", metadata)
         self.assertIn("Version: 0.1.0", metadata)
