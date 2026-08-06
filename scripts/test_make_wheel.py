@@ -104,6 +104,28 @@ class BuildWheelTest(unittest.TestCase):
         self.assertIn("Version: 0.1.0", metadata)
         self.assertIn("Requires-Python: >=3.7", metadata)
 
+    def test_readme_embedded_as_description(self) -> None:
+        readme = "# uv-prune\n\nDescription for PyPI page.\n"
+        wheel = build_wheel(
+            binary=str(self.binary),
+            name=NAME,
+            version=VERSION,
+            platform_tag="win_amd64",
+            summary="test summary",
+            project_url="https://example.com/uv-prune",
+            readme=readme,
+            out_dir=str(self.tmp),
+        )
+        metadata = self._read(wheel, "uv_prune-0.1.0.dist-info/METADATA").decode()
+        self.assertIn("Description-Content-Type: text/markdown\n", metadata)
+        # The description body follows the blank line after the headers.
+        self.assertIn("\n\n# uv-prune\n\nDescription for PyPI page.", metadata)
+
+    def test_metadata_without_readme(self) -> None:
+        wheel = self._build("win_amd64")
+        metadata = self._read(wheel, "uv_prune-0.1.0.dist-info/METADATA").decode()
+        self.assertNotIn("# uv-prune", metadata)
+
 
 if __name__ == "__main__":
     unittest.main()

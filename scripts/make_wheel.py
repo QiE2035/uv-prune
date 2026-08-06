@@ -15,10 +15,13 @@ ship it as `uv-prune`. Only the Python standard library is used.
 Usage:
     python scripts/make_wheel.py --binary <path-to-binary> \\
         --name uv-prune --version 0.1.0 \\
-        --platform-tag musllinux_1_2_x86_64 [--out <dir>]
+    --platform-tag musllinux_1_2_x86_64 [--readme <path>] [--out <dir>]
 
 The platform tag is the PEP 425 tag of the target platform, e.g.
 `musllinux_1_2_x86_64`, `macosx_11_0_arm64` or `win_amd64`.
+`--readme` defaults to `README.md` at the repository root; its content is
+embedded as the wheel's `Description` so PyPI shows a project page instead
+of an empty description.
 
 Tests:
     uv run --no-project python scripts/test_make_wheel.py
@@ -34,6 +37,7 @@ import io
 import os
 import sys
 import zipfile
+from pathlib import Path
 
 # Unix file type (regular) + rwxr-xr-x — needed so pip does not have to
 # re-mark the script executable on install.
@@ -81,6 +85,7 @@ def build_wheel(
     summary: str,
     project_url: str,
     out_dir: str,
+    readme: str | None = None,
 ) -> str:
     """Assemble the wheel file and return its path."""
     # A tag like `cp312-abi3-manylinux` is ABI-specific; a plain binary is
@@ -100,8 +105,7 @@ def build_wheel(
     init_rel = f"{name_safe}/__init__.py"
     entry_points_rel = f"{dist_info}/entry_points.txt"
 
-    metadata = "\n".join(
-        [
+    metadata_lines = [
             "Metadata-Version: 2.1",
             f"Name: {name}",
             f"Version: {version}",
@@ -110,9 +114,14 @@ def build_wheel(
             f"Project-URL: Repository, {project_url}",
             "Requires-Python: >=3.7",
             "Description-Content-Type: text/markdown",
-            "",
         ]
-    ).encode("utf-8")
+    # The description body starts after a blank line following the headers
+    # (email-header convention, same layout setuptools emits). Without it
+    # PyPI has no long description for the project page.
+    if readme is not None:
+        metadata_lines.append("")
+        metadata_lines.append(readme.rstrip())
+    metadata = "\n".join(metadata_lines).encode("utf-8")
 
     wheel_meta = "\n".join(
         [
@@ -167,6 +176,11 @@ def main() -> int:
     parser.add_argument("--platform-tag", required=True, help="PEP 425 platform tag, e.g. win_amd64")
     parser.add_argument("--summary", default="Clean uv cache by removing non-hardlinked archive entries")
     parser.add_argument("--project-url", default="https://github.com/QiE2035/uv-prune")
+    parser.add_argument(
+        "--readme",
+        default=str(Path(__file__).resolve().parent.parent / "README.md"),
+        help="Path to the project README to embed as the wheel Description (default: repo root README.md)",
+    )
     parser.add_argument("--out", default="dist")
     args = parser.parse_args()
 
@@ -174,6 +188,11 @@ def main() -> int:
         parser.error(f"--binary: file not found: {args.binary}")
     if not args.platform_tag:
         parser.error("--platform-tag must not be empty")
+
+    readme: str | None = None
+    if args.readme and os.path.isfile(args.readme):
+        with open(args.readme, encoding="utf-8") as fh:
+            readme = fh.read()
 
     os.makedirs(args.out, exist_ok=True)
     wheel_path = build_wheel(
@@ -183,6 +202,7 @@ def main() -> int:
         platform_tag=args.platform_tag,
         summary=args.summary,
         project_url=args.project_url,
+        readme=readme,
         out_dir=args.out,
     )
     print(f"Built {wheel_path} ({os.path.getsize(wheel_path)} bytes)")
