@@ -8,6 +8,17 @@ uv uses [hard links](https://en.wikipedia.org/wiki/Hard_link) to deduplicate pac
 
 `uv-prune` scans the `archive-v0` directory in uv's cache and removes entries whose files have a link count of 1 — meaning they are no longer shared and can be safely deleted.
 
+## How it works
+
+For each entry in `archive-v0`, `uv-prune`:
+
+1. Looks for a `.dist-info` subdirectory to identify the package name and version (e.g. `anyio-4.0.0` from `anyio-4.0.0.dist-info`).
+2. Checks the link count of the `METADATA` file inside that directory — uv hard-links this file across all environments that share the package.
+3. If the link count is **1**, the archive entry is no longer shared and is **removed**. If it is **> 1**, the entry is still in use and is **kept**.
+4. Entries **without** a `.dist-info` directory are only warned about by default; pass `--include-no-dist-info` to remove them too.
+
+All entries are processed in parallel (via Rayon) and reported as a table sorted by package name and version.
+
 ## Installation
 
 ```bash
@@ -47,6 +58,24 @@ uv-prune --no-timing
 uv-prune --jobs 4
 ```
 
+### Options
+
+| Option                   | Short | Description                                             |
+| ------------------------ | ----- | ------------------------------------------------------- |
+| `--cache-dir <DIR>`      | `-c`  | UV cache directory (overrides `UV_CACHE_DIR` env var)   |
+| `--dry-run`              | `-d`  | Show what would be deleted without actually deleting    |
+| `--verbose`              | `-v`  | Enable verbose (debug) output                           |
+| `--include-no-dist-info` | `-i`  | Also remove entries without a `.dist-info` directory    |
+| `--jobs <N>`             | `-j`  | Number of parallel workers (`0` = auto-detect, default) |
+| `--no-timing`            | `-n`  | Disable timing measurement                              |
+
+### Exit Codes
+
+| Code | Meaning                                       |
+| ---- | --------------------------------------------- |
+| `0`  | Success (even if entries were skipped/warned) |
+| `1`  | One or more errors occurred while pruning     |
+
 ### Environment Variables
 
 | Variable       | Description                                                |
@@ -69,11 +98,25 @@ $ uv-prune --dry-run --verbose
 [INFO  uv_prune] uv-prune v0.1.0 — cache: /home/user/.cache/uv
 [INFO  uv_prune::prune] Pruning archive directory: /home/user/.cache/uv/archive-v0
 [INFO  uv_prune::prune] Dry-run mode — no files will be deleted
-[DEBUG uv_prune::prune] Keeping (hardlinked): abc123def456
-[DEBUG uv_prune::prune] Keeping (hardlinked): 789ghi012jkl
-[INFO  uv_prune::prune] Done: 2 checked, 0 removed, 2 skipped, 0 no-dist-info, 0 errors
+[INFO  uv_prune::prune] [DRY-RUN] Action    ID                     Version   Name       Detail
+[INFO  uv_prune::prune] [DRY-RUN] --------  ---------------------  --------  ---------  -----------------------------------------
+[INFO  uv_prune::prune] [DRY-RUN] Deleting  abc123def456789abc     4.0.0     anyio
+[DEBUG uv_prune::prune] [DRY-RUN] Keeping   ghi012jkl345mnopqr     2.31.0    requests
+[WARN  uv_prune::prune] [DRY-RUN] Skipping  deadbeef               -         -          no .dist-info (use --include-no-dist-info to remove)
+[INFO  uv_prune::prune] Done: 3 checked, 1 removed, 2 skipped, 1 no-dist-info, 0 errors
 [INFO  uv_prune] Elapsed time: 15.2ms
 ```
+
+The report is a table with the following columns:
+
+- **Action** — `Deleting`, `Keeping`, `Skipping` or `Failed`.
+- **ID** — the uv cache archive directory name; `-` when it could not be read.
+- **Version / Name** — parsed from the `.dist-info` directory name; `-` when there is no `.dist-info`.
+- **Detail** — the reason for `Skipping` / `Failed` entries, if any.
+
+In dry-run mode every table line is prefixed with `[DRY-RUN]` and nothing is
+actually deleted. `Keeping` rows are logged at debug level, so pass
+`--verbose` to see them, and column widths adapt to the longest entry.
 
 ## Platform Support
 

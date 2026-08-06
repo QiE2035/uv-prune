@@ -3,8 +3,7 @@ name = "uv-prune"
 version = "0.1.0"
 description = "Clean uv cache by removing non-hardlinked archive entries"
 edition = "2024"
-license = "MIT"
-repository = "https://github.com/user/uv-prune"
+repository = "https://github.com/QiE2035/uv-prune"
 keywords = ["uv", "cache", "cleaner", "hardlink"]
 
 [dependencies]
@@ -25,6 +24,6 @@ windows = { version = "0.62.2", features = [
 [profile.release]
 codegen-units = 1
 lto = true
-opt-level = "z"
+# opt-level = "z" # disable for higher speed
 panic = "abort"
 strip = true
