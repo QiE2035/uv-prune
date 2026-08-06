@@ -121,7 +121,10 @@ jobs:
           BIN="target/${{ matrix.target }}/release/uv-prune"
           if [ "${{ matrix.archive }}" = "zip" ]; then
             cp "$BIN.exe" uv-prune.exe
-            powershell -Command "Compress-Archive -Path 'uv-prune.exe' -DestinationPath \`"artifacts/uv-prune-$VERSION-${{ matrix.target }}.zip\`" -Force"
+            # bsdtar (bundled with Git for Windows) instead of powershell
+            # Compress-Archive: the bash -> powershell.exe quoting is too
+            # fragile when the -Command string is embedded in a workflow.
+            tar -a -cf "artifacts/uv-prune-$VERSION-${{ matrix.target }}.zip" uv-prune.exe
           else
             tar -czf "artifacts/uv-prune-$VERSION-${{ matrix.target }}.tar.gz" \
               -C "target/${{ matrix.target }}/release" uv-prune
