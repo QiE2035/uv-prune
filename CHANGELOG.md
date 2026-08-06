@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Release automation via GitHub Actions (`.github/workflows/publish.yml`): pushing a `v*` tag builds binaries for Linux (musl), macOS and Windows, attaches them to a GitHub Release with `SHA256SUMS`, and publishes `py3-none-{platform}` wheels to PyPI (trusted publishing or `PYPI_API_TOKEN`).
+- `scripts/make_wheel.py` — builds a platform wheel that ships the compiled binary under `.data/scripts/`, enabling `uv tool install` / `pipx install` / `pip install`. Python is managed by uv both locally and on CI.
+
 ## [0.1.0] — 2026-07-30
 
 ### Added

@@ -21,17 +21,48 @@ All entries are processed in parallel (via Rayon) and reported as a table sorted
 
 ## Installation
 
+### From PyPI (pre-built binary)
+
+Every tagged release publishes platform wheels to PyPI (no Python code — the compiled binary ships inside the wheel), so install with any Python package manager:
+
+```bash
+uv tool install uv-prune   # recommended — managed by uv
+pipx install uv-prune
+pip install uv-prune       # then run `uv-prune`
+```
+
+### From GitHub Releases
+
+Pre-built binaries for Linux (x86_64 / aarch64, static musl), macOS (arm64 / x86_64) and Windows (x86_64) are attached to each [release](https://github.com/QiE2035/uv-prune/releases) as `.tar.gz` / `.zip` archives together with a `SHA256SUMS` checksum file.
+
+### From source
+
 ```bash
 cargo install uv-prune
 ```
 
-Or build from source:
+Or build manually:
 
 ```bash
 git clone https://github.com/QiE2035/uv-prune
 cd uv-prune
 cargo build --release
 ```
+
+## Releases
+
+Pushing a `v*` tag triggers the [publish workflow](.github/workflows/publish.yml), which:
+
+1. Builds release binaries for Linux (musl), macOS and Windows (see the platform table in the workflow).
+2. Creates (or updates) a GitHub Release with the archives and `SHA256SUMS`.
+3. Builds `py3-none-{platform}` wheels from those binaries and publishes them to PyPI — via [trusted publishing](https://docs.pypi.org/trusted-publishers/) (recommended), or the `PYPI_API_TOKEN` repository secret as fallback.
+
+```bash
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+The workflow can also be run manually via `workflow_dispatch` to smoke-test the build matrix without publishing.
 
 ## Usage
 
@@ -114,9 +145,7 @@ The report is a table with the following columns:
 - **Version / Name** — parsed from the `.dist-info` directory name; `-` when there is no `.dist-info`.
 - **Detail** — the reason for `Skipping` / `Failed` entries, if any.
 
-In dry-run mode every table line is prefixed with `[DRY-RUN]` and nothing is
-actually deleted. `Keeping` rows are logged at debug level, so pass
-`--verbose` to see them, and column widths adapt to the longest entry.
+In dry-run mode every table line is prefixed with `[DRY-RUN]` and nothing is actually deleted. `Keeping` rows are logged at debug level, so pass `--verbose` to see them, and column widths adapt to the longest entry.
 
 ## Platform Support
 

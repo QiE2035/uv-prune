@@ -1,0 +1,190 @@
+name: Publish
+
+# Build release binaries and wheels for every tagged release (v*).
+#
+# - `github-release` job → attaches platform archives to the GitHub Release.
+# - `pypi` job → builds `py3-none-{platform}` wheels (no Python code, just the
+#   binary under `.data/scripts/`) and publishes them to PyPI, so
+#   `uv tool install uv-prune` / `pipx install uv-prune` work.
+#
+# The `build` job also runs on `workflow_dispatch` (no tag) to smoke-test the
+# build matrix without publishing anything.
+#
+# PyPI authentication, in order of preference:
+#   1. Trusted publishing (OIDC) — configure the publisher in PyPI under
+#      "Publishing → Trusted Publishers" for this repo. Recommended.
+#   2. `PYPI_API_TOKEN` repository secret — the pypa/gh-action-pypi-publish
+#      step picks it up automatically as its password.
+#
+# Python on CI is managed by uv (astral-sh/setup-uv) — the project itself is
+# a uv ecosystem tool, so the same toolchain is used locally and in CI.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: never
+
+jobs:
+  build:
+    name: build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux — static musl builds, no glibc dependency.
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            archive: tar.gz
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            archive: tar.gz
+          # macOS — musl does not exist here; native Mach-O binaries.
+          - os: macos-latest # arm64
+            target: aarch64-apple-darwin
+            archive: tar.gz
+          - os: macos-13 # x86_64 (last Intel runner; drop if GitHub removes it)
+            target: x86_64-apple-darwin
+            archive: tar.gz
+          # Windows.
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+          # Add aarch64-pc-windows-msvc / win_arm64 once a Windows arm64
+          # runner label is available (GitHub arm64 preview).
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: echo "version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)" >> "$GITHUB_OUTPUT"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install musl linker
+        if: contains(matrix.target, 'musl')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - name: Build release binary
+        shell: bash
+        run: cargo build --release --target "${{ matrix.target }}"
+
+      - name: Package binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p artifacts
+          BIN="target/${{ matrix.target }}/release/uv-prune"
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            cp "$BIN.exe" uv-prune.exe
+            powershell -Command "Compress-Archive -Path 'uv-prune.exe' -DestinationPath \`"artifacts/uv-prune-$VERSION-${{ matrix.target }}.zip\`" -Force"
+          else
+            tar -czf "artifacts/uv-prune-$VERSION-${{ matrix.target }}.tar.gz" \
+              -C "target/${{ matrix.target }}/release" uv-prune
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.target }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 7
+
+  github-release:
+    name: GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create SHA256SUMS
+        run: |
+          cd artifacts
+          sha256sum *.tar.gz *.zip > SHA256SUMS
+
+      - name: Create or update release
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          shopt -s nullglob
+          FILES=(artifacts/*.tar.gz artifacts/*.zip artifacts/SHA256SUMS)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+          else
+            gh release create "$TAG" "${FILES[@]}" --title "$TAG" --generate-notes
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  pypi:
+    name: Publish wheels to PyPI
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # trusted publishing; remove if using PYPI_API_TOKEN only
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - uses: actions/checkout@v4 # scripts/make_wheel.py
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheels
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
+          mkdir -p dist
+          for archive in artifacts/*.tar.gz artifacts/*.zip; do
+            [ -e "$archive" ] || continue
+            case "$archive" in
+              *x86_64-unknown-linux-musl.tar.gz)   tag=musllinux_1_2_x86_64;   bin=uv-prune    ;;
+              *aarch64-unknown-linux-musl.tar.gz)  tag=musllinux_1_2_aarch64;  bin=uv-prune    ;;
+              *aarch64-apple-darwin.tar.gz)        tag=macosx_11_0_arm64;      bin=uv-prune    ;;
+              *x86_64-apple-darwin.tar.gz)         tag=macosx_10_12_x86_64;    bin=uv-prune    ;;
+              *x86_64-pc-windows-msvc.zip)         tag=win_amd64;              bin=uv-prune.exe ;;
+              *) echo "::warning::No wheel tag mapping for $archive"; continue ;;
+            esac
+            tmp="$(mktemp -d)"
+            if [[ "$archive" == *.zip ]]; then
+              unzip -q "$archive" -d "$tmp"
+            else
+              tar -xzf "$archive" -C "$tmp"
+            fi
+            uv run --no-project python scripts/make_wheel.py --binary "$tmp/$bin" \
+              --version "$VERSION" --platform-tag "$tag" --out dist
+            rm -rf "$tmp"
+          done
+          ls -l dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+          skip-existing: true
+          verbose: true

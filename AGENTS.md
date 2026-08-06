@@ -58,6 +58,9 @@ Modules, each with tests colocated in-module:
 - **Keep refactoring until nothing is left**: when asked to find improvements,
 	iterate until no further opportunities remain instead of stopping at the
 	first fix.
+- **Never hard-wrap text**: keep paragraphs, list items and replies as single
+	natural lines instead of wrapping at a fixed column width — in docs,
+	changelogs and chat output alike.
 - **Output-format changes must update test expectations**: the table
 	formatter's expected strings (column widths, separators) are easy to get
 	wrong — after touching formatting, run `cargo test` and verify the binary's
