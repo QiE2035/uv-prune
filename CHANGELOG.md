@@ -4,8 +4,11 @@
 
 ### Added
 
+- CI workflow (`.github/workflows/ci.yml`): fmt, clippy and tests on push to `main` and on pull requests, across Linux, macOS and Windows — the local commit hook only covers the development platform, so this is the only place platform-specific code (`hardlink.rs`) is verified everywhere.
 - Release automation via GitHub Actions (`.github/workflows/publish.yml`): pushing a `v*` tag builds binaries for Linux (musl), macOS and Windows (x86_64 / arm64), attaches them to a GitHub Release with `SHA256SUMS`, and publishes `py3-none-{platform}` wheels to PyPI (trusted publishing or `PYPI_API_TOKEN`).
 - `scripts/make_wheel.py` — builds a platform wheel that ships the compiled binary under `.data/scripts/`, enabling `uv tool install` / `pipx install` / `pip install`. Python is managed by uv both locally and on CI.
+- Shared `setup-rust` composite action (`.github/actions/setup-rust`) — the checkout + toolchain + cache steps are defined once and reused by both workflows; the PyPI job also gained the `contents: read` permission its `checkout` step needs.
+- Git branches reorganized: default branch renamed `master` → `main`, development branches archived under `archive/` (`archive/modernize`, `archive/prune_by_metadata_file`).
 
 ## [0.1.0] — 2026-07-30
 

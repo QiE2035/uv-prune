@@ -1,0 +1,43 @@
+name: CI
+
+# fmt + clippy + tests on every push to main and on pull requests, across
+# Linux, macOS and Windows — the local commit hook only covers the platform
+# you develop on, and `publish.yml` only runs on tags, so this is the only
+# place where platform-specific code (hardlink.rs) is verified everywhere.
+#
+# Deliberately mirrors the local quality gate (fmt --check + clippy --all-targets)
+# without stricter rules, so CI never fails where the local gate passed.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: never
+
+jobs:
+  check:
+    name: fmt + clippy + test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: ./.github/actions/setup-rust
+        with:
+          components: rustfmt, clippy
+
+      - name: Format check
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets
+
+      - name: Test
+        run: cargo test

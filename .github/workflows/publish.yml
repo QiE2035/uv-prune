@@ -36,11 +36,7 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
 
       - name: Run tests
         run: cargo test --release
@@ -76,7 +72,10 @@ jobs:
             archive: zip
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-rust
+        with:
+          targets: ${{ matrix.target }}
+          cache-key: ${{ matrix.target }}
 
       - name: Read version
         id: version
@@ -94,14 +93,6 @@ jobs:
             echo "::error::Tag v$TAG does not match Cargo.toml version $VERSION"
             exit 1
           fi
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.target }}
 
       - name: Install musl linker
         if: contains(matrix.target, 'musl')
@@ -176,6 +167,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
+      contents: read # needed by actions/checkout below
       id-token: write # trusted publishing; remove if using PYPI_API_TOKEN only
     steps:
       - uses: actions/download-artifact@v4

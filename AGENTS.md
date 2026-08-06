@@ -14,7 +14,7 @@ cargo clippy --all-targets
 cargo fmt
 ```
 
-The only workflow is the tag-triggered publish pipeline (`.github/workflows/publish.yml`); there is no CI on regular commits and no clippy/fmt config — default rules apply. Tests use the real filesystem with temporary directories; run them on the target platform when platform-specific code changes.
+Two workflows exist: `ci.yml` runs fmt/clippy/tests on push to `main` and on pull requests across Linux, macOS and Windows; `publish.yml` is the tag-triggered release pipeline (build matrix + GitHub Release + PyPI). There is no clippy/fmt config — default rules apply. Tests use the real filesystem with temporary directories; run them on the target platform when platform-specific code changes (CI covers all three platforms).
 
 ## Architecture
 
@@ -38,6 +38,15 @@ Modules, each with tests colocated in-module:
 - **Exit codes**: `0` = success (even with warnings/skips); `1` = one or more errors (via `std::process::exit(1)` in `main`).
 - **Unsafe**: only 2 sites inside the Windows hardlink impl, each with `SAFETY` comments. Unsupported platforms use `compile_error!`.
 - **Parallelism**: archive entries are processed in parallel via Rayon; `--jobs 0` = auto-detect.
+
+## Git Branching
+
+Branch names follow `type/name`, optionally nested as `type/a/b/c`:
+
+- `main` — the only permanent branch; development happens directly on it, and releases are shipped via tags (no `develop`/`release` branches).
+- `feat/*` / `fix/*` — new features and bug fixes; merge into `main` and delete after merging.
+- `refactor/*` / `perf/*` / `ci/*` / `docs/*` / `chore/*` / `test/*` — same `type/name` pattern per purpose, merged and deleted.
+- `archive/*` — shelved branches kept for history (e.g. `archive/modernize`, `archive/prune_by_metadata_file`). Their commits are already part of `main`'s history.
 
 ## Pitfalls
 
@@ -69,12 +78,12 @@ Modules, each with tests colocated in-module:
 ## Quality gate
 
 `.github/hooks/quality-gate.json` blocks `git commit` (via PreToolUse) until
-`cargo fmt --check` and `cargo clippy --all-targets` pass — the project has no
-CI on regular commits, so this is the only enforced gate on commits. If a
-commit is blocked, the hook's `systemMessage` contains the failing output; fix
-the reported issues before committing. The hook scripts live in
-`.github/hooks/` (`.ps1` for Windows, `.sh` for Unix) and are symmetric by
-design — keep both in sync.
+`cargo fmt --check` and `cargo clippy --all-targets` pass — the fastest
+feedback, with `ci.yml` running the same checks on push/PR as a remote
+backstop. If a commit is blocked, the hook's `systemMessage` contains the
+failing output; fix the reported issues before committing. The hook scripts
+live in `.github/hooks/` (`.ps1` for Windows, `.sh` for Unix) and are
+symmetric by design — keep both in sync.
 
 ## Delegation
 

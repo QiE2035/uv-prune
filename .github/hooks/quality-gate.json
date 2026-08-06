@@ -5,7 +5,6 @@
         "type": "command",
         "command": "bash .github/hooks/pre-commit-quality.sh",
         "windows": "powershell -NoProfile -ExecutionPolicy Bypass -File .github/hooks/pre-commit-quality.ps1",
-        "cwd": "${workspaceFolder}",
         "timeout": 120
       }
     ]
