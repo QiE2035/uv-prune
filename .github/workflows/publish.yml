@@ -149,6 +149,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4 # gh release --generate-notes needs a git repo
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -183,12 +185,14 @@ jobs:
       contents: read # needed by actions/checkout below
       id-token: write # trusted publishing; remove if using PYPI_API_TOKEN only
     steps:
+      - uses: actions/checkout@v4 # scripts/make_wheel.py
+        # Must run BEFORE download-artifact: checkout's `git clean -ffdx`
+        # wipes untracked files, deleting any previously downloaded artifacts.
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
-
-      - uses: actions/checkout@v4 # scripts/make_wheel.py
 
       - uses: astral-sh/setup-uv@v5
         with:
