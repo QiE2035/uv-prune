@@ -32,8 +32,22 @@ env:
   CARGO_TERM_COLOR: never
 
 jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: cargo test --release
+
   build:
     name: build (${{ matrix.target }})
+    needs: test
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -47,18 +61,19 @@ jobs:
             target: aarch64-unknown-linux-musl
             archive: tar.gz
           # macOS — musl does not exist here; native Mach-O binaries.
-          - os: macos-latest # arm64
+          - os: macos-latest   # arm64 (macos-latest now points to macOS 26 arm64)
             target: aarch64-apple-darwin
             archive: tar.gz
-          - os: macos-13 # x86_64 (last Intel runner; drop if GitHub removes it)
+          - os: macos-26-intel # x86_64 (Intel; macos-13 retired)
             target: x86_64-apple-darwin
             archive: tar.gz
-          # Windows.
+          # Windows — x86_64 and arm64.
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             archive: zip
-          # Add aarch64-pc-windows-msvc / win_arm64 once a Windows arm64
-          # runner label is available (GitHub arm64 preview).
+          - os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            archive: zip
 
     steps:
       - uses: actions/checkout@v4
@@ -68,9 +83,25 @@ jobs:
         shell: bash
         run: echo "version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)" >> "$GITHUB_OUTPUT"
 
+      - name: Verify tag matches Cargo.toml version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.version.outputs.version }}"
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "::error::Tag v$TAG does not match Cargo.toml version $VERSION"
+            exit 1
+          fi
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
 
       - name: Install musl linker
         if: contains(matrix.target, 'musl')
@@ -81,6 +112,10 @@ jobs:
       - name: Build release binary
         shell: bash
         run: cargo build --release --target "${{ matrix.target }}"
+
+      - name: Smoke test binary
+        shell: bash
+        run: "target/${{ matrix.target }}/release/uv-prune${{ matrix.archive == 'zip' && '.exe' || '' }} --version"
 
       - name: Package binary
         shell: bash
@@ -168,6 +203,7 @@ jobs:
               *aarch64-apple-darwin.tar.gz)        tag=macosx_11_0_arm64;      bin=uv-prune    ;;
               *x86_64-apple-darwin.tar.gz)         tag=macosx_10_12_x86_64;    bin=uv-prune    ;;
               *x86_64-pc-windows-msvc.zip)         tag=win_amd64;              bin=uv-prune.exe ;;
+              *aarch64-pc-windows-msvc.zip)        tag=win_arm64;              bin=uv-prune.exe ;;
               *) echo "::warning::No wheel tag mapping for $archive"; continue ;;
             esac
             tmp="$(mktemp -d)"

@@ -33,7 +33,7 @@ pip install uv-prune       # then run `uv-prune`
 
 ### From GitHub Releases
 
-Pre-built binaries for Linux (x86_64 / aarch64, static musl), macOS (arm64 / x86_64) and Windows (x86_64) are attached to each [release](https://github.com/QiE2035/uv-prune/releases) as `.tar.gz` / `.zip` archives together with a `SHA256SUMS` checksum file.
+Pre-built binaries for Linux (x86_64 / aarch64, static musl), macOS (arm64 / x86_64) and Windows (x86_64 / arm64) are attached to each [release](https://github.com/QiE2035/uv-prune/releases) as `.tar.gz` / `.zip` archives together with a `SHA256SUMS` checksum file.
 
 ### From source
 

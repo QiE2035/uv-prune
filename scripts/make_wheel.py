@@ -15,6 +15,9 @@ Usage:
 
 The platform tag is the PEP 425 tag of the target platform, e.g.
 `musllinux_1_2_x86_64`, `macosx_11_0_arm64` or `win_amd64`.
+
+Tests:
+    uv run --no-project python scripts/test_make_wheel.py
 """
 
 from __future__ import annotations
@@ -50,11 +53,12 @@ def build_wheel(
     """Assemble the wheel file and return its path."""
     # A tag like `cp312-abi3-manylinux` is ABI-specific; a plain binary is
     # Python-version agnostic, so `py3-none-{platform}` is correct.
-    wheel_name = f"{name.replace('-', '_')}-{version}-py3-none-{platform_tag}.whl"
+    name_safe = name.replace("-", "_")
+    wheel_name = f"{name_safe}-{version}-py3-none-{platform_tag}.whl"
     wheel_path = os.path.join(out_dir, wheel_name)
 
-    dist_info = f"{name.replace('-', '_')}-{version}.dist-info"
-    data_dir = f"{name.replace('-', '_')}-{version}.data"
+    dist_info = f"{name_safe}-{version}.dist-info"
+    data_dir = f"{name_safe}-{version}.data"
     # The file inside `.data/scripts/` becomes the installed command name:
     # keep the hyphen so `uv tool install` / `pipx` / `pip` provide
     # `uv-prune` (and `uv-prune.exe` on Windows), not `uv_prune`.
@@ -128,6 +132,11 @@ def main() -> int:
     parser.add_argument("--project-url", default="https://github.com/QiE2035/uv-prune")
     parser.add_argument("--out", default="dist")
     args = parser.parse_args()
+
+    if not os.path.isfile(args.binary):
+        parser.error(f"--binary: file not found: {args.binary}")
+    if not args.platform_tag:
+        parser.error("--platform-tag must not be empty")
 
     os.makedirs(args.out, exist_ok=True)
     wheel_path = build_wheel(

@@ -14,7 +14,7 @@ cargo clippy --all-targets
 cargo fmt
 ```
 
-No CI pipeline and no clippy/fmt config exist — default rules apply. Tests use the real filesystem with temporary directories; run them on the target platform when platform-specific code changes.
+The only workflow is the tag-triggered publish pipeline (`.github/workflows/publish.yml`); there is no CI on regular commits and no clippy/fmt config — default rules apply. Tests use the real filesystem with temporary directories; run them on the target platform when platform-specific code changes.
 
 ## Architecture
 
@@ -70,10 +70,11 @@ Modules, each with tests colocated in-module:
 
 `.github/hooks/quality-gate.json` blocks `git commit` (via PreToolUse) until
 `cargo fmt --check` and `cargo clippy --all-targets` pass — the project has no
-CI, so this is the only enforced gate. If a commit is blocked, the hook's
-`systemMessage` contains the failing output; fix the reported issues before
-committing. The hook scripts live in `.github/hooks/` (`.ps1` for Windows,
-`.sh` for Unix) and are symmetric by design — keep both in sync.
+CI on regular commits, so this is the only enforced gate on commits. If a
+commit is blocked, the hook's `systemMessage` contains the failing output; fix
+the reported issues before committing. The hook scripts live in
+`.github/hooks/` (`.ps1` for Windows, `.sh` for Unix) and are symmetric by
+design — keep both in sync.
 
 ## Delegation
 
