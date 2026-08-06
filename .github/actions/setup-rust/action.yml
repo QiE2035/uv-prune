@@ -1,5 +1,5 @@
 name: Setup Rust toolchain
-description: Check out the repo, install the stable Rust toolchain (optionally with extra targets/components) and enable the cargo cache. Shared by the CI and publish workflows.
+description: Install the stable Rust toolchain (optionally with extra targets/components) and enable the cargo cache. The repository must already be checked out — local actions are resolved before any step runs, so the checkout step lives in each workflow.
 
 inputs:
   targets:
@@ -18,8 +18,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@v4
-
     - uses: dtolnay/rust-toolchain@stable
       with:
         targets: ${{ inputs.targets }}

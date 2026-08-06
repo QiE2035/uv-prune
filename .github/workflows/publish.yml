@@ -36,6 +36,8 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: ./.github/actions/setup-rust
 
       - name: Run tests
@@ -72,6 +74,8 @@ jobs:
             archive: zip
 
     steps:
+      - uses: actions/checkout@v4
+
       - uses: ./.github/actions/setup-rust
         with:
           targets: ${{ matrix.target }}
