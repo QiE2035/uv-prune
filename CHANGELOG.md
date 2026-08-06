@@ -16,6 +16,15 @@
 
 - `build.rs` embeds a full version string at compile time, so `--version` distinguishes build provenance: CI builds get `+ci.<run-number>.<commit-sha-prefix>` (e.g. `uv-prune 0.1.0+ci.42.a1b2c3d4`), local development builds get `+dev.<short-sha>`, and tagged releases stay clean (`uv-prune 0.1.0`) — the publish workflow sets `UV_PRUNE_RELEASE_BUILD` so git state on CI can never leak a dev marker into release artifacts.
 
+## [0.1.1] — 2026-08-06
+
+### Fixed
+
+- `scripts/make_wheel.py` embeds the repository `README.md` as the wheel's `Description` — previously the PyPI project page rendered an empty description because no long description was shipped in `METADATA`.
+- Publish workflow (`publish.yml`): the `github-release` job was missing `actions/checkout@v4`, so `gh release create --generate-notes` failed with `not a git repository`.
+- Publish workflow (`publish.yml`): the `pypi` job ran `actions/checkout@v4` *after* `download-artifact`, and checkout's `git clean -ffdx` wiped the downloaded artifacts — no wheels were ever built.
+- Publish workflow (`publish.yml`): Windows archives were packaged with Git Bash's `tar -a -cf x.zip`, which is GNU tar and does not recognize the `.zip` suffix — it silently emitted a plain tar archive. Packaging now goes through `scripts/package-zip.ps1` (`Compress-Archive`), producing real zip files.
+
 ## [0.1.0] — 2026-07-30
 
 ### Added

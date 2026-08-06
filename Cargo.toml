@@ -1,6 +1,6 @@
 [package]
 name = "uv-prune"
-version = "0.1.0"
+version = "0.1.1"
 description = "Clean uv cache by removing non-hardlinked archive entries"
 edition = "2024"
 repository = "https://github.com/QiE2035/uv-prune"
