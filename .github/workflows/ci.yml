@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  actions: write # upload-artifact
 
 env:
   CARGO_TERM_COLOR: never
@@ -43,3 +44,15 @@ jobs:
 
       - name: Test
         run: cargo test
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: uv-prune-${{ matrix.os }}
+          path: |
+            target/release/uv-prune
+            target/release/uv-prune.exe
+          if-no-files-found: error
