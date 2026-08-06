@@ -49,6 +49,10 @@ Branch names follow `type/name`, optionally nested as `type/a/b/c`:
 - `refactor/*` / `perf/*` / `ci/*` / `docs/*` / `chore/*` / `test/*` — same `type/name` pattern per purpose, merged and deleted.
 - `archive/*` — shelved branches kept for history (e.g. `archive/modernize`, `archive/prune_by_metadata_file`). Their commits are already part of `main`'s history.
 
+## Git Commits
+
+Use Conventional Commits: a one-line `type(scope): summary` title (e.g. `fix(ci): ...`) followed by a blank line and the details in the body. Prefer bullet-point lists over long natural-language paragraphs in the body — one bullet per point (reason, impact, steps). Do not cram long explanations into the title with `—` or `:`. Types: `feat` / `fix` / `refactor` / `perf` / `ci` / `docs` / `chore` / `test`.
+
 ## Pitfalls
 
 - Windows PowerShell reports `NativeCommandError` for cargo stderr output — exit code 1 does not always mean a real failure; read the actual error message.
