@@ -32,7 +32,7 @@ pub struct Cli {
     pub no_timing: bool,
 
     /// Generate a shell completion script and exit
-    #[arg(short, long, value_name = "SHELL", hide = false)]
+    #[arg(short, long, value_name = "SHELL")]
     pub generate_completions: Option<Shell>,
 }
 
