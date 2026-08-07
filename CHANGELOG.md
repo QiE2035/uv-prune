@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.2] — 2026-08-07
 
 ### Added
 
@@ -15,6 +15,10 @@
 - `scripts/make_wheel.py` now ships the binary inside a thin Python launcher package (`uv_prune`) wired up via a `console_scripts` entry point. `uv tool install` / `pipx` / `pip` therefore only place a small launcher in the bin directory instead of copying the whole binary there, keeping a single copy of the executable inside the environment.
 
 - `build.rs` embeds a full version string at compile time, so `--version` distinguishes build provenance: CI builds get `+ci.<run-number>.<commit-sha-prefix>` (e.g. `uv-prune 0.1.0+ci.42.a1b2c3d4`), local development builds get `+dev.<short-sha>`, and tagged releases stay clean (`uv-prune 0.1.0`) — the publish workflow sets `UV_PRUNE_RELEASE_BUILD` so git state on CI can never leak a dev marker into release artifacts.
+
+### Fixed
+
+- Report table column widths now only account for the rows actually rendered at the current log level: verbose-only entries (`DEBUG` `Keeping`, `Skipping` without `.dist-info`) no longer inflate the `ID` / `Name` / `Detail` columns of non-verbose output. Column widths are computed from the reports filtered by `log::max_level()` instead of the full report set.
 
 ## [0.1.1] — 2026-08-06
 

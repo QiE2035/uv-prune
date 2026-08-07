@@ -58,8 +58,8 @@ Pushing a `v*` tag triggers the [publish workflow](.github/workflows/publish.yml
 3. Builds `py3-none-{platform}` wheels from those binaries and publishes them to PyPI — via [trusted publishing](https://docs.pypi.org/trusted-publishers/) (recommended), or the `PYPI_API_TOKEN` repository secret as fallback.
 
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 The workflow can also be run manually via `workflow_dispatch` to smoke-test the build matrix without publishing.
