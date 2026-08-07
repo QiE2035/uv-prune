@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- `--generate-completions <SHELL>` produces a shell completion script for `bash`, `zsh`, `fish`, `powershell` or `elvish` and exits — install it wherever your shell expects completion files (e.g. `~/.local/share/bash-completion/completions/uv-prune`).
+- When entries without a `.dist-info` directory are skipped, the run summary is followed by a one-line hint reminding you that `--include-no-dist-info` would remove them.
+
 ## [0.1.2] — 2026-08-07
 
 ### Added

@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 
 use crate::cli::Cli;
 use crate::config::Config;
@@ -16,6 +16,19 @@ mod report;
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+
+    // Shell completion generation is a self-contained output action that
+    // must happen before any logging or filesystem work.
+    if let Some(shell) = cli.generate_completions {
+        clap_complete::generate(
+            shell,
+            &mut Cli::command(),
+            "uv-prune",
+            &mut std::io::stdout(),
+        );
+        return Ok(());
+    }
+
     let config = Config::from(cli);
 
     init_logging(&config);

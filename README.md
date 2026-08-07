@@ -93,14 +93,15 @@ uv-prune --jobs 4
 
 ### Options
 
-| Option                   | Short | Description                                             |
-| ------------------------ | ----- | ------------------------------------------------------- |
-| `--cache-dir <DIR>`      | `-c`  | UV cache directory (overrides `UV_CACHE_DIR` env var)   |
-| `--dry-run`              | `-d`  | Show what would be deleted without actually deleting    |
-| `--verbose`              | `-v`  | Enable verbose (debug) output                           |
-| `--include-no-dist-info` | `-i`  | Also remove entries without a `.dist-info` directory    |
-| `--jobs <N>`             | `-j`  | Number of parallel workers (`0` = auto-detect, default) |
-| `--no-timing`            | `-n`  | Disable timing measurement                              |
+| Option                           | Short | Description                                                        |
+| -------------------------------- | ----- | ------------------------------------------------------------------ |
+| `--cache-dir <DIR>`              | `-c`  | UV cache directory (overrides `UV_CACHE_DIR` env var)              |
+| `--dry-run`                      | `-d`  | Show what would be deleted without actually deleting               |
+| `--verbose`                      | `-v`  | Enable verbose (debug) output                                      |
+| `--include-no-dist-info`         | `-i`  | Also remove entries without a `.dist-info` directory               |
+| `--jobs <N>`                     | `-j`  | Number of parallel workers (`0` = auto-detect, default)            |
+| `--no-timing`                    | `-n`  | Disable timing measurement                                         |
+| `--generate-completions <SHELL>` |       | Generate a shell completion script and exit (`bash`, `zsh`, `fish`, `powershell`, `elvish`) |
 
 ### Exit Codes
 
@@ -137,6 +138,7 @@ $ uv-prune --dry-run --verbose
 [DEBUG uv_prune::prune] [DRY-RUN] Keeping   ghi012jkl345mnopqr     2.31.0    requests
 [WARN  uv_prune::prune] [DRY-RUN] Skipping  deadbeef               -         -          no .dist-info (use --include-no-dist-info to remove)
 [INFO  uv_prune::prune] Done: 3 checked, 1 removed, 2 skipped, 1 no-dist-info, 0 errors
+[INFO  uv_prune::prune] 1 entry had no .dist-info directory — re-run with --include-no-dist-info to remove them
 [INFO  uv_prune] Elapsed time: 15.2ms
 ```
 
@@ -148,6 +150,18 @@ The report is a table with the following columns:
 - **Detail** — the reason for `Skipping` / `Failed` entries, if any.
 
 In dry-run mode every table line is prefixed with `[DRY-RUN]` and nothing is actually deleted. `Keeping` rows are logged at debug level, so pass `--verbose` to see them, and column widths adapt to the longest entry.
+
+When entries without a `.dist-info` directory are skipped, a one-line hint at the end reminds you that `--include-no-dist-info` would remove them.
+
+### Shell Completion
+
+Generate a completion script for your shell and source it (or install it where your shell expects it):
+
+```bash
+$ uv-prune --generate-completions bash # bash, zsh, fish, powershell, elvish
+```
+
+For example, on bash: `uv-prune --generate-completions bash > ~/.local/share/bash-completion/completions/uv-prune`.
 
 ## Platform Support
 

@@ -63,7 +63,19 @@ pub fn run(config: &Config) -> anyhow::Result<PruneResult> {
         })
         .collect();
 
-    Ok(report_entries(reports, config.dry_run))
+    let total = report_entries(reports, config.dry_run);
+    if total.no_dist_info > 0 && !config.include_no_dist_info {
+        let noun = if total.no_dist_info == 1 {
+            "entry"
+        } else {
+            "entries"
+        };
+        log::info!(
+            "{total_no_dist_info} {noun} had no .dist-info directory — re-run with --include-no-dist-info to remove them",
+            total_no_dist_info = total.no_dist_info,
+        );
+    }
+    Ok(total)
 }
 
 /// Process a single archive entry.

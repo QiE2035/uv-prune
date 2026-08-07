@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::Parser;
+use clap_complete::Shell;
 
 /// Clean uv cache by removing non-hardlinked archive entries.
 #[derive(Parser, Debug)]
@@ -29,4 +30,35 @@ pub struct Cli {
     /// Disable timing measurement
     #[arg(short, long)]
     pub no_timing: bool,
+
+    /// Generate a shell completion script and exit
+    #[arg(long, value_name = "SHELL", hide = false)]
+    pub generate_completions: Option<Shell>,
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::{CommandFactory, Parser, ValueEnum};
+
+    use super::*;
+
+    #[test]
+    fn generate_completions_flag_parses_shell() {
+        let cli = Cli::try_parse_from(["uv-prune", "--generate-completions", "bash"]).unwrap();
+        assert!(matches!(cli.generate_completions, Some(Shell::Bash)));
+
+        // The flag stays unset when it is not passed.
+        let plain = Cli::try_parse_from(["uv-prune"]).unwrap();
+        assert!(plain.generate_completions.is_none());
+    }
+
+    #[test]
+    fn generates_nonempty_completion_for_every_shell() {
+        for shell in Shell::value_variants() {
+            let mut cmd = Cli::command();
+            let mut out: Vec<u8> = Vec::new();
+            clap_complete::generate(*shell, &mut cmd, "uv-prune", &mut out);
+            assert!(!out.is_empty(), "completion for {shell} is empty");
+        }
+    }
 }
