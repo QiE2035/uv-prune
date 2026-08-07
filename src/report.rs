@@ -229,10 +229,10 @@ impl ColumnWidths {
 
 const PLACEHOLDER: &str = "-";
 
-impl From<&[EntryReport]> for ColumnWidths {
-    fn from(reports: &[EntryReport]) -> Self {
+impl<'a> FromIterator<&'a EntryReport> for ColumnWidths {
+    fn from_iter<I: IntoIterator<Item = &'a EntryReport>>(iter: I) -> Self {
         let mut columns = Self::COLUMNS;
-        for r in reports {
+        for r in iter {
             let name_cell = r.pkg.as_ref().map_or(PLACEHOLDER, |p| p.name.as_str());
             let version_cell = placeholder(r.pkg.as_ref().and_then(|p| p.version.as_deref()));
             let lens = [
@@ -307,8 +307,11 @@ pub fn report_entries(mut reports: Vec<EntryReport>, dry_run: bool) -> PruneResu
     // Report entries sorted by package (name, then version), then id.
     reports.sort_by(|a, b| a.pkg.cmp(&b.pkg).then_with(|| a.id.cmp(&b.id)));
 
-    // Column widths adapt to the longest value in each column.
-    let widths = ColumnWidths::from(reports.as_slice());
+    // Column widths adapt to the longest value actually displayed: rows
+    // hidden at the current log level (e.g. verbose-only "Keeping") must
+    // not inflate the columns.
+    let max_level = log::max_level();
+    let widths: ColumnWidths = reports.iter().filter(|r| r.level <= max_level).collect();
 
     let dry_run_prefix = if dry_run { "[DRY-RUN] " } else { "" };
     log::info!("{dry_run_prefix}{}", format_header(&widths));
@@ -379,5 +382,36 @@ mod tests {
         let line = format_entry(&report, &widths);
         assert!(line.contains("Failed"));
         assert!(line.contains("boom"));
+    }
+
+    #[test]
+    fn widths_ignore_rows_hidden_at_current_level() {
+        let verbose_only = EntryReport::kept(
+            "an-absurdly-long-archive-id-1234567890".to_string(),
+            Package {
+                name: "verbose-package".to_string(),
+                version: Some("9.9.9".to_string()),
+            },
+        );
+        let visible = EntryReport::deleting(
+            "short".to_string(),
+            Some(Package {
+                name: "pkg".to_string(),
+                version: Some("1.0".to_string()),
+            }),
+            None,
+            false,
+        );
+
+        // Filtering mirrors `report_entries`: rows above the max level are
+        // dropped from the width calculation.
+        let filtered: ColumnWidths = [&verbose_only, &visible]
+            .into_iter()
+            .filter(|r| r.level <= log::LevelFilter::Info)
+            .collect();
+        let expected: ColumnWidths = std::iter::once(&visible).collect();
+        for (a, b) in filtered.0.iter().zip(expected.0) {
+            assert_eq!(a.width, b.width, "column '{}'", a.header);
+        }
     }
 }
