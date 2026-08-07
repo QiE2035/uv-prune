@@ -101,7 +101,7 @@ uv-prune --jobs 4
 | `--include-no-dist-info`         | `-i`  | Also remove entries without a `.dist-info` directory               |
 | `--jobs <N>`                     | `-j`  | Number of parallel workers (`0` = auto-detect, default)            |
 | `--no-timing`                    | `-n`  | Disable timing measurement                                         |
-| `--generate-completions <SHELL>` |       | Generate a shell completion script and exit (`bash`, `zsh`, `fish`, `powershell`, `elvish`) |
+| `--generate-completions <SHELL>` | `-g`  | Generate a shell completion script and exit (`bash`, `zsh`, `fish`, `powershell`, `elvish`) |
 
 ### Exit Codes
 
@@ -158,10 +158,10 @@ When entries without a `.dist-info` directory are skipped, a one-line hint at th
 Generate a completion script for your shell and source it (or install it where your shell expects it):
 
 ```bash
-$ uv-prune --generate-completions bash # bash, zsh, fish, powershell, elvish
+$ uv-prune -g bash # short for --generate-completions bash; bash, zsh, fish, powershell, elvish
 ```
 
-For example, on bash: `uv-prune --generate-completions bash > ~/.local/share/bash-completion/completions/uv-prune`.
+For example, on bash: `uv-prune -g bash > ~/.local/share/bash-completion/completions/uv-prune`.
 
 ## Platform Support
 

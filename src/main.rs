@@ -20,12 +20,9 @@ fn main() -> anyhow::Result<()> {
     // Shell completion generation is a self-contained output action that
     // must happen before any logging or filesystem work.
     if let Some(shell) = cli.generate_completions {
-        clap_complete::generate(
-            shell,
-            &mut Cli::command(),
-            "uv-prune",
-            &mut std::io::stdout(),
-        );
+        let mut cmd = Cli::command();
+        let bin_name = cmd.get_name().to_owned();
+        clap_complete::generate(shell, &mut cmd, &bin_name, &mut std::io::stdout());
         return Ok(());
     }
 
@@ -35,7 +32,8 @@ fn main() -> anyhow::Result<()> {
     init_thread_pool(config.jobs);
 
     log::info!(
-        "uv-prune v{} — cache: {}",
+        "{} v{} — cache: {}",
+        Cli::command().get_name(),
         env!("UV_PRUNE_FULL_VERSION"),
         config.cache_dir.display()
     );

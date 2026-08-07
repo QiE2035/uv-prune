@@ -5,7 +5,7 @@ use clap_complete::Shell;
 
 /// Clean uv cache by removing non-hardlinked archive entries.
 #[derive(Parser, Debug)]
-#[command(name = "uv-prune", version = env!("UV_PRUNE_FULL_VERSION"), author)]
+#[command(version = env!("UV_PRUNE_FULL_VERSION"), author)]
 pub struct Cli {
     /// UV cache directory (overrides UV_CACHE_DIR env var)
     #[arg(short, long, env = "UV_CACHE_DIR")]
@@ -32,7 +32,7 @@ pub struct Cli {
     pub no_timing: bool,
 
     /// Generate a shell completion script and exit
-    #[arg(long, value_name = "SHELL", hide = false)]
+    #[arg(short, long, value_name = "SHELL", hide = false)]
     pub generate_completions: Option<Shell>,
 }
 
@@ -44,11 +44,12 @@ mod tests {
 
     #[test]
     fn generate_completions_flag_parses_shell() {
-        let cli = Cli::try_parse_from(["uv-prune", "--generate-completions", "bash"]).unwrap();
+        let cli = Cli::try_parse_from([env!("CARGO_PKG_NAME"), "--generate-completions", "bash"])
+            .unwrap();
         assert!(matches!(cli.generate_completions, Some(Shell::Bash)));
 
         // The flag stays unset when it is not passed.
-        let plain = Cli::try_parse_from(["uv-prune"]).unwrap();
+        let plain = Cli::try_parse_from([env!("CARGO_PKG_NAME")]).unwrap();
         assert!(plain.generate_completions.is_none());
     }
 
@@ -57,7 +58,8 @@ mod tests {
         for shell in Shell::value_variants() {
             let mut cmd = Cli::command();
             let mut out: Vec<u8> = Vec::new();
-            clap_complete::generate(*shell, &mut cmd, "uv-prune", &mut out);
+            let bin_name = cmd.get_name().to_owned();
+            clap_complete::generate(*shell, &mut cmd, &bin_name, &mut out);
             assert!(!out.is_empty(), "completion for {shell} is empty");
         }
     }

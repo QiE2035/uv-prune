@@ -219,7 +219,8 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!("uv-prune-test-{label}-{unique}"));
+        let dir =
+            std::env::temp_dir().join(format!("{}-test-{label}-{unique}", env!("CARGO_PKG_NAME")));
         fs::create_dir_all(&dir).unwrap();
         dir
     }
